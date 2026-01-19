@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Super Generator</title>
+    <style>
+
+        .quiz-card {
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .options div {
+            padding: 5px 0;
+            color: #555;
+        }
+        .btn-reveal {
+            margin-top: 10px;
+            background-color: #ffc107;
+            color: #333;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .btn-reveal:hover { background-color: #e0a800; }
+        .answer-box {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #d4edda;
+            color: #155724;
+            border-radius: 4px;
+            border: 1px solid #c3e6cb;
+        }
+        body { font-family: 'Segoe UI', sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; background-color: #f4f4f9; }
+        h1 { text-align: center; color: #333; }
+        
+        textarea { 
+            width: 100%; height: 200px; padding: 15px; 
+            border: 2px solid #ddd; border-radius: 8px; font-size: 16px;
+            box-sizing: border-box; 
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            padding: 12px; font-size: 15px; cursor: pointer;
+            color: white; border: none; border-radius: 6px;
+            transition: transform 0.1s;
+            font-weight: bold;
+        }
+        button:active { transform: scale(0.98); }
+
+        /* Button Colors */
+        .btn-summary { background-color: #6c757d; } 
+        .btn-quiz    { background-color: #28a745; } 
+        .btn-short   { background-color: #17a2b8; } 
+        .btn-long    { background-color: #007bff; } 
+        .btn-q-only  { background-color: #fd7e14; } 
+        .btn-notes   { background-color: #6f42c1; } 
+        .btn-explain { background-color: #e83e8c; } 
+        #output { 
+            margin-top: 20px; padding: 20px; 
+            border: 1px solid #ddd; background: white; 
+            min-height: 100px; border-radius: 8px;
+            line-height: 1.6;
+            white-space: normal; 
+        }
+        .loading { color: #666; font-style: italic; text-align: center; display: block;}
+    </style>
+</head>
+<body>
+
+    <h1>📚 Exam Content Generator</h1>
+    <p>Paste your notes below and choose a tool:</p>
+    
+    <textarea id="inputText" placeholder="Paste your study text here..."></textarea>
+
+    <div class="controls">
+        <button class="btn-summary" onclick="generate('summarize')">📝 Summarize</button>
+        <button class="btn-notes" onclick="generate('notes')">⚡ Revision Notes</button>
+        <button class="btn-explain" onclick="generate('explain')">🧠 Explain Concept</button>
+        <button class="btn-quiz" onclick="generate('quiz')">✅ MC Quiz</button>
+        <button class="btn-short" onclick="generate('qa-short')">❓ Short Q&A</button>
+        <button class="btn-long" onclick="generate('qa-long')">📖 Long Q&A</button>
+        <button class="btn-q-only" onclick="generate('questions-only')">📝 Questions Only</button>
+    </div>
+
+    <h3>Result:</h3>
+    <div id="output">Results will appear here...</div>
+
+    <script>
+        async function generate(type) {
+            const text = document.getElementById('inputText').value;
+            const output = document.getElementById('output');
+
+            if(!text) { alert("Please paste some text first!"); return; }
+            
+            output.innerHTML = '<span class="loading">Generating content... please wait...</span>';
+
+            const endpoint = 'http://localhost:3000/ai-action';
+            const payload = { text, action: type };
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                
+                if (data.error) {
+                    output.innerText = "Error: " + data.error;
+                } else {
+                    
+                    if (type === 'quiz') {
+                        renderQuiz(data.result);
+                    } else {
+                        output.innerHTML = data.result;
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                output.innerText = "❌ Connection Failed. Is the server running?";
+            }
+        }
+
+        
+        function renderQuiz(jsonString) {
+            const output = document.getElementById('output');
+            try {
+                const questions = JSON.parse(jsonString);
+                let html = '';
+
+                questions.forEach((q, index) => {
+                    html += `
+                        <div class="quiz-card">
+                            <strong>${index + 1}. ${q.question}</strong>
+                            <div class="options">
+                                ${q.options.map(opt => `<div>${opt}</div>`).join('')}
+                            </div>
+                            <button class="btn-reveal" onclick="document.getElementById('ans-${index}').style.display = 'block'">
+                                👁️ Show Answer
+                            </button>
+                            <div id="ans-${index}" class="answer-box" style="display:none;">
+                                ✅ <strong>Answer:</strong> ${q.answer}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                output.innerHTML = html;
+            } catch (e) {
+                console.error("JSON Error:", e);
+                output.innerText = "⚠️ Error parsing quiz data. The AI might have formatted it uniquely. Try again.";
+            }
+        }
+    </script>
+</body>
+</html>
