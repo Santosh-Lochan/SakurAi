@@ -1,8 +1,11 @@
 {
   "name": "sakurai",
   "version": "1.0.0",
-  "description": "Exam Content Generator using AI",
+  "description": "AI Exam Generator",
   "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node server.js"
   },
@@ -10,6 +13,6 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "@google/generative-ai": "^0.1.3"
+    "@google/generative-ai": "^0.21.0"
   }
 }
