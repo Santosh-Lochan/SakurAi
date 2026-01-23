@@ -3,110 +3,480 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exam Super Generator</title>
+    <title>SakurAi - Exam Super Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+
     <style>
+        /* --- 1. LIGHT MODE --- */
+        :root {
+            --bg-color: #fff0f5;       
+            --card-bg: rgba(255, 255, 255, 0.95); 
+            --input-bg: transparent;
+            --quiz-card-bg: #ffffff;   
+            --text-color: #5d4037;     
+            --sub-text: rgba(93, 64, 55, 0.7);
+            --accent-color: #ff69b4;   
+            --accent-hover: #ff1493;   
+            --border-color: #ffc1e3;
+            --shadow: 0 8px 32px rgba(255, 105, 180, 0.2);
+            --font-main: 'Quicksand', sans-serif;
+            --radius: 20px;
+            
+            /* QUIZ COLORS */
+            --opt-bg: #fff0f5;
+            --opt-hover: #ffe6f2;
+            --correct-bg: #d1fae5; 
+            --correct-border: #34d399;
+            --correct-text: #065f46;
+            --wrong-bg: #450a0a;   /* Deep Red Background */
+            --wrong-border: #7f1d1d;
+            --wrong-text: #fef2f2; /* White Text */
+        }
 
-        .quiz-card {
-            background: #fff;
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        /* --- 2. DARK MODE --- */
+        [data-theme="dark"] {
+            --bg-color: #0f172a;       
+            --card-bg: rgba(30, 41, 59, 0.9); 
+            --input-bg: rgba(0, 0, 0, 0.2);
+            --quiz-card-bg: #1e293b;   
+            --text-color: #e2e8f0;     
+            --sub-text: #94a3b8;       
+            --accent-color: #f472b6;   
+            --accent-hover: #db2777;   
+            --border-color: #334155;   
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            
+            /* QUIZ DARK COLORS */
+            --opt-bg: #334155;
+            --opt-hover: #475569;
+            --correct-bg: #064e3b;
+            --correct-border: #10b981;
+            --correct-text: #ecfdf5;
+            --wrong-bg: #450a0a;
+            --wrong-border: #7f1d1d;
+            --wrong-text: #fef2f2;
         }
-        .options div {
-            padding: 5px 0;
-            color: #555;
+
+        /* --- GLOBAL LAYOUT --- */
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: background-color 0.4s ease, color 0.4s ease;
         }
-        .btn-reveal {
-            margin-top: 10px;
-            background-color: #ffc107;
-            color: #333;
-            padding: 8px 12px;
-            border: none;
-            border-radius: 4px;
+
+        /* --- TOGGLE SWITCH --- */
+        .theme-switch-wrapper {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+        }
+        .theme-switch {
+            display: inline-block;
+            height: 34px;
+            position: relative;
+            width: 60px;
+        }
+        .theme-switch input { display: none; }
+        .slider {
+            background-color: #ffc1e3;
+            bottom: 0;
             cursor: pointer;
-            font-size: 0.9rem;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            transition: .4s;
+            border-radius: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 6px;
         }
-        .btn-reveal:hover { background-color: #e0a800; }
-        .answer-box {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #d4edda;
-            color: #155724;
-            border-radius: 4px;
-            border: 1px solid #c3e6cb;
+        .slider:before {
+            background-color: white;
+            bottom: 4px;
+            content: "";
+            height: 26px;
+            left: 4px;
+            position: absolute;
+            transition: .4s;
+            width: 26px;
+            border-radius: 50%;
+            z-index: 2;
         }
-        body { font-family: 'Segoe UI', sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; background-color: #f4f4f9; }
-        h1 { text-align: center; color: #333; }
-        
-        textarea { 
-            width: 100%; height: 200px; padding: 15px; 
-            border: 2px solid #ddd; border-radius: 8px; font-size: 16px;
-            box-sizing: border-box; 
+        input:checked + .slider { background-color: #334155; }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+            background-color: #f472b6; 
+        }
+        .icon { font-size: 14px; z-index: 1; user-select: none; }
+
+        /* --- TYPOGRAPHY --- */
+        h1 {
+            font-weight: 700;
+            color: var(--text-color);
+            font-size: 3rem;
+            margin-bottom: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            transition: color 0.4s ease;
+        }
+        p#subtitle {
+            text-align: center;
+            color: var(--sub-text);
+            margin-top: 5px;
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+            transition: color 0.4s ease;
         }
 
+        /* --- INPUT CARD --- */
+        .input-card {
+            background: var(--card-bg);
+            padding: 10px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            width: 100%;
+            max-width: 800px;
+            box-sizing: border-box;
+            backdrop-filter: blur(10px);
+            transition: all 0.4s ease;
+        }
+        textarea {
+            width: 100%;
+            height: 180px;
+            padding: 15px;
+            border: 1px solid transparent; 
+            border-radius: 12px;
+            font-family: var(--font-main);
+            font-size: 1rem;
+            color: var(--text-color);
+            background: var(--input-bg);
+            resize: none;
+            box-sizing: border-box;
+            outline: none;
+            transition: all 0.4s ease;
+        }
+        textarea::placeholder { color: var(--sub-text); opacity: 0.6; }
+        textarea:focus { border-color: var(--accent-color); }
+
+        /* --- CONTROL GRID --- */
         .controls {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 10px;
-            margin-top: 15px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 25px;
+            width: 100%;
+            max-width: 800px;
         }
-
         button {
-            padding: 12px; font-size: 15px; cursor: pointer;
-            color: white; border: none; border-radius: 6px;
-            transition: transform 0.1s;
-            font-weight: bold;
+            padding: 18px;
+            font-size: 0.9rem;
+            font-family: var(--font-main);
+            font-weight: 700;
+            cursor: pointer;
+            color: white;
+            background-color: var(--accent-color);
+            border: none;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            background-color: var(--accent-hover);
+            box-shadow: 0 6px 15px rgba(255, 105, 180, 0.4);
         }
         button:active { transform: scale(0.98); }
+        @media (max-width: 600px) { .controls { grid-template-columns: repeat(2, 1fr); } }
 
-        /* Button Colors */
-        .btn-summary { background-color: #6c757d; } 
-        .btn-quiz    { background-color: #28a745; } 
-        .btn-short   { background-color: #17a2b8; } 
-        .btn-long    { background-color: #007bff; } 
-        .btn-q-only  { background-color: #fd7e14; } 
-        .btn-notes   { background-color: #6f42c1; } 
-        .btn-explain { background-color: #e83e8c; } 
-        #output { 
-            margin-top: 20px; padding: 20px; 
-            border: 1px solid #ddd; background: white; 
-            min-height: 100px; border-radius: 8px;
-            line-height: 1.6;
-            white-space: normal; 
+        /* --- OUTPUT AREA --- */
+        .result-section {
+            width: 100%;
+            max-width: 800px;
+            margin-top: 40px;
+            padding-bottom: 50px;
         }
-        .loading { color: #666; font-style: italic; text-align: center; display: block;}
+        h3 {
+            color: var(--text-color);
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            font-weight: 700;
+            transition: color 0.4s ease;
+        }
+        #output {
+            padding: 30px;
+            border-radius: var(--radius);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
+            line-height: 1.8;
+            white-space: pre-wrap; /* Needed for text summaries */
+            backdrop-filter: blur(10px);
+            min-height: 100px;
+            color: var(--text-color);
+            transition: all 0.4s ease;
+        }
+        
+        #output strong { color: var(--accent-color); }
+        /* Force quiz options to be plain */
+        .quiz-option strong, .quiz-option em, .quiz-option b, .quiz-option i {
+            color: inherit !important; 
+            font-weight: 500 !important;
+            font-style: normal !important;
+        }
+
+        /* --- QUIZ STYLING --- */
+        .quiz-card {
+            background: var(--quiz-card-bg);
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            margin-bottom: 25px;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            white-space: normal; /* FIX: Reset whitespace so indentation doesn't show */
+        }
+        .quiz-card strong {
+            color: var(--accent-color);
+            font-size: 1.1rem;
+            display: block;
+            margin-bottom: 15px;
+        }
+        
+        .quiz-option {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: var(--opt-bg);
+            border-radius: 10px;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            font-weight: 500;
+        }
+        .quiz-option:hover { background: var(--opt-hover); transform: translateX(5px); }
+
+        .quiz-option.correct {
+            background-color: var(--correct-bg);
+            border-color: var(--correct-border);
+            color: var(--correct-text);
+        }
+        .quiz-option.wrong {
+            background-color: var(--wrong-bg);
+            border-color: var(--wrong-border);
+            color: var(--wrong-text);
+            opacity: 1; /* Keep fully opaque for readability */
+        }
+
+        /* EXPLANATION BOX */
+        .explanation-box {
+            margin-top: 15px;
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            display: none;
+            animation: fadeIn 0.3s ease;
+            border: 1px solid transparent;
+        }
+        .explanation-box.correct-box {
+            background-color: var(--correct-bg);
+            border-color: var(--correct-border);
+            color: var(--correct-text);
+        }
+        .explanation-box.wrong-box {
+            background-color: var(--wrong-bg);
+            border-color: var(--wrong-border);
+            color: var(--wrong-text);
+        }
+        .explanation-header {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+        
+        /* The Sakura Bold Span for Correct Answers */
+        .sakura-bold {
+            color: var(--accent-color) !important;
+            font-weight: 700;
+        }
+
+        /* SCORE CARD */
+        #score-section {
+            display: none; 
+            margin-top: 30px;
+            text-align: center;
+            border-top: 2px dashed var(--border-color);
+            padding-top: 30px;
+        }
+        .score-btn {
+            background-color: var(--text-color); 
+            color: var(--bg-color);
+            width: auto;
+            display: inline-block;
+            padding: 15px 40px;
+        }
+        .score-btn:hover { background-color: var(--accent-color); }
+        
+        #final-score-display {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            animation: fadeIn 0.5s ease;
+        }
+        .pun-text {
+            font-style: normal;
+            color: var(--accent-color);
+            margin-top: 15px;
+            display: block;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .loading {
+            color: var(--accent-color);
+            font-weight: 700;
+            text-align: center;
+            display: block;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-    <h1>📚 Exam Content Generator</h1>
-    <p>Paste your notes below and choose a tool:</p>
-    
-    <textarea id="inputText" placeholder="Paste your study text here..."></textarea>
-
-    <div class="controls">
-        <button class="btn-summary" onclick="generate('summarize')">📝 Summarize</button>
-        <button class="btn-notes" onclick="generate('notes')">⚡ Revision Notes</button>
-        <button class="btn-explain" onclick="generate('explain')">🧠 Explain Concept</button>
-        <button class="btn-quiz" onclick="generate('quiz')">✅ MC Quiz</button>
-        <button class="btn-short" onclick="generate('qa-short')">❓ Short Q&A</button>
-        <button class="btn-long" onclick="generate('qa-long')">📖 Long Q&A</button>
-        <button class="btn-q-only" onclick="generate('questions-only')">📝 Questions Only</button>
+    <div class="theme-switch-wrapper">
+        <label class="theme-switch" for="checkbox">
+            <input type="checkbox" id="checkbox" />
+            <div class="slider round">
+                <span class="icon">☀️</span>
+                <span class="icon">🌙</span>
+            </div>
+        </label>
     </div>
 
-    <h3>Result:</h3>
-    <div id="output">Results will appear here...</div>
+    <h1>SakurAi</h1>
+    <p id="subtitle">The Spring of Knowledge</p>
+    
+    <div class="input-card">
+        <textarea id="inputText" placeholder="Paste your study notes here..."></textarea>
+    </div>
+
+    <div class="controls">
+        <button onclick="generate('summarize')">📝 Summarize</button>
+        <button onclick="generate('notes')">⚡ Revision Notes</button>
+        <button onclick="generate('quiz')">✅ MC Quiz</button>
+        <button onclick="generate('qa-short')">❓ Short Q&A</button>
+        <button onclick="generate('qa-long')">📖 Long Q&A</button>
+        <button onclick="generate('questions-only')">📋 Questions Only</button>
+    </div>
+
+    <div class="result-section">
+        <h3>Analysis Result</h3>
+        <div id="output">System Ready. Awaiting Input.</div>
+        
+        <div id="score-section">
+            <button class="score-btn" onclick="showFinalScore()">🏁 Finish Quiz</button>
+            <div id="final-score-display"></div>
+        </div>
+    </div>
 
     <script>
+        // --- 1. THEME SWITCHER ---
+        const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            if(toggleSwitch) toggleSwitch.checked = (theme === 'dark');
+        }
+        function switchTheme(e) { setTheme(e.target.checked ? 'dark' : 'light'); }
+        function initTheme() {
+            const storedTheme = localStorage.getItem('theme');
+            if (storedTheme) { setTheme(storedTheme); }
+            else {
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                setTheme(prefersDark ? 'dark' : 'light');
+            }
+        }
+        initTheme(); 
+        if(toggleSwitch) toggleSwitch.addEventListener('change', switchTheme);
+
+
+        // --- 2. GLOBAL VARIABLES ---
+        let currentQuizData = [];
+        let aiPunSuccess = "Great job!";
+        let aiPunFail = "Keep trying!";
+        let userScore = { correct: 0, wrong: 0, total: 0 };
+        
+        const successPhrases = ["Good job!", "Spot on!", "Nailed it!", "Correct!", "You got it!"];
+        const failPhrases = ["Ah, shucks!", "Close one!", "Not quite!", "Oops!", "Almost!"];
+
+        // --- 3. CLEANER ---
+        function cleanOptionText(text) {
+            if (!text) return "";
+            // Remove markdown like **bold**, *italic*, __bold__
+            return text.replace(/[\*_]/g, '');
+        }
+
+        // --- 4. GENERATE FUNCTION (NUCLEAR PROMPT) ---
         async function generate(type) {
-            const text = document.getElementById('inputText').value;
+            let text = document.getElementById('inputText').value;
             const output = document.getElementById('output');
+            const scoreSection = document.getElementById('score-section');
+            const finalDisplay = document.getElementById('final-score-display');
 
             if(!text) { alert("Please paste some text first!"); return; }
             
-            output.innerHTML = '<span class="loading">Generating content... please wait...</span>';
+            output.innerHTML = '<span class="loading">✨ Gathering Cherry Blossoms... (Processing) ✨</span>';
+            scoreSection.style.display = 'none';
+            finalDisplay.innerHTML = "";
+            userScore = { correct: 0, wrong: 0, total: 0 };
+
+            if (type === 'quiz') {
+                // THE NUCLEAR PROMPT: Putting structure at the END + Demanding JSON
+                const instructions = `
+                
+                *** SYSTEM INSTRUCTION ***
+                You are a strict JSON Generator. 
+                Do NOT output markdown. Do NOT output preface text. Output ONLY valid JSON.
+                
+                Based on the user text above, generate a quiz.
+                
+                REQUIRED JSON STRUCTURE:
+                {
+                    "message_success": "A funny, encouraging pun/congratulation related to the topic for a high score.",
+                    "message_failure": "A funny, roast-style encouraging pun related to the topic for a low score.",
+                    "questions": [
+                        {
+                            "question": "Question text here",
+                            "options": ["Option A", "Option B", "Option C", "Option D"],
+                            "answer": "The text of the correct option",
+                            "why_is_it_correct": "A conceptual explanation of why this answer is right. MUST be 1-2 sentences. Do NOT say 'Because it is correct'."
+                        }
+                    ]
+                }
+                `;
+                // Append instructions to the END of the text
+                text = text + "\n\n" + instructions;
+            }
 
             const endpoint = 'https://sakurai-cjfz.onrender.com/ai-action';
             const payload = { text, action: type };
@@ -123,11 +493,34 @@
                 if (data.error) {
                     output.innerText = "Error: " + data.error;
                 } else {
-                    
                     if (type === 'quiz') {
-                        renderQuiz(data.result);
+                        try {
+                            // Helper to parse if AI wraps in ```json ... ```
+                            let rawJson = data.result;
+                            if (rawJson.includes("```json")) {
+                                rawJson = rawJson.replace(/```json/g, "").replace(/```/g, "");
+                            }
+                            
+                            const parsedData = JSON.parse(rawJson);
+                            
+                            if (parsedData.questions) {
+                                currentQuizData = parsedData.questions;
+                                aiPunSuccess = parsedData.message_success || "Outstanding!";
+                                aiPunFail = parsedData.message_failure || "Keep studying!";
+                            } else {
+                                // Fallback for bad AI behavior
+                                currentQuizData = Array.isArray(parsedData) ? parsedData : [];
+                            }
+
+                            userScore.total = currentQuizData.length;
+                            renderInteractiveQuiz(currentQuizData);
+                            scoreSection.style.display = 'block'; 
+                        } catch (e) {
+                            console.error(e);
+                            output.innerText = "Error parsing quiz data. The AI returned invalid JSON. Please try again.";
+                        }
                     } else {
-                        output.innerHTML = data.result;
+                        output.innerHTML = formatText(data.result);
                     }
                 }
             } catch (err) {
@@ -136,35 +529,125 @@
             }
         }
 
-        
-        function renderQuiz(jsonString) {
+        function formatText(text) {
+            let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            formatted = formatted.replace(/\* /g, '• ');
+            return formatted;
+        }
+
+        // --- 5. QUIZ RENDER ---
+        function renderInteractiveQuiz(questions) {
             const output = document.getElementById('output');
-            try {
-                const questions = JSON.parse(jsonString);
-                let html = '';
+            // FIX: Removed indentation from string template to prevent whitespace artifacts
+            let html = '';
 
-                questions.forEach((q, index) => {
-                    html += `
-                        <div class="quiz-card">
-                            <strong>${index + 1}. ${q.question}</strong>
-                            <div class="options">
-                                ${q.options.map(opt => `<div>${opt}</div>`).join('')}
-                            </div>
-                            <button class="btn-reveal" onclick="document.getElementById('ans-${index}').style.display = 'block'">
-                                👁️ Show Answer
-                            </button>
-                            <div id="ans-${index}" class="answer-box" style="display:none;">
-                                ✅ <strong>Answer:</strong> ${q.answer}
-                            </div>
-                        </div>
-                    `;
+            questions.forEach((q, qIndex) => {
+                html += `<div class="quiz-card" id="q-card-${qIndex}">`;
+                html += `<strong>${qIndex + 1}. ${q.question}</strong>`;
+                html += `<div class="options-container">`;
+                
+                q.options.forEach((opt, optIndex) => {
+                    html += `<div class="quiz-option" onclick="checkAnswer(${qIndex}, ${optIndex}, this)">${cleanOptionText(opt)}</div>`;
                 });
+                
+                html += `</div>`;
+                html += `<div class="explanation-box" id="explain-${qIndex}"></div>`;
+                html += `</div>`;
+            });
+            output.innerHTML = html;
+        }
 
-                output.innerHTML = html;
-            } catch (e) {
-                console.error("JSON Error:", e);
-                output.innerText = "⚠️ Error parsing quiz data. The AI might have formatted it uniquely. Try again.";
+        function checkAnswer(qIndex, optIndex, element) {
+            const parent = document.getElementById(`q-card-${qIndex}`);
+            if (parent.classList.contains('answered')) return; 
+            parent.classList.add('answered');
+
+            const question = currentQuizData[qIndex];
+            const selectedText = cleanOptionText(question.options[optIndex]);
+            const aiAnswerText = cleanOptionText(question.answer);
+
+            // MATCHING
+            const userLetterMatch = selectedText.match(/^([A-D])[\)\.]/i);
+            const userLetter = userLetterMatch ? userLetterMatch[1].toUpperCase() : null;
+
+            let aiLetter = null;
+            const aiAnswerMatch = aiAnswerText.match(/^([A-D])[\)\.]/i);
+            if (aiAnswerMatch) {
+                aiLetter = aiAnswerMatch[1].toUpperCase();
+            } else {
+                const clean = aiAnswerText.replace(/[\*\s]/g, '').toUpperCase();
+                if (clean.length === 1 && "ABCD".includes(clean)) aiLetter = clean;
             }
+
+            const userRawText = selectedText.replace(/^[A-D][\)\.]\s*/i, '').trim().toLowerCase();
+            const aiRawText = aiAnswerText.replace(/^[A-D][\)\.]\s*/i, '').replace(/\*\*/g, '').trim().toLowerCase();
+
+            let isCorrect = false;
+            if (userLetter && aiLetter && userLetter === aiLetter) isCorrect = true;
+            else if (userRawText === aiRawText || aiRawText.includes(userRawText) || userRawText.includes(aiRawText)) isCorrect = true;
+
+            // UI UPDATES
+            const explainBox = document.getElementById(`explain-${qIndex}`);
+            explainBox.style.display = 'block';
+
+            const successMsg = successPhrases[Math.floor(Math.random() * successPhrases.length)];
+            const failMsg = failPhrases[Math.floor(Math.random() * failPhrases.length)];
+            
+            // Use the new "why_is_it_correct" field
+            const reason = question.why_is_it_correct ? question.why_is_it_correct : (question.explanation || "Correct Answer.");
+            
+            let htmlContent = "";
+
+            if (isCorrect) {
+                userScore.correct++;
+                element.classList.add('correct');
+                explainBox.classList.add('correct-box');
+                
+                htmlContent += `<div class="explanation-header">✅ ${successMsg.toUpperCase()}</div>`;
+                htmlContent += `<div><strong>Explanation:</strong> ${reason}</div>`;
+
+            } else {
+                userScore.wrong++;
+                element.classList.add('wrong');
+                explainBox.classList.add('wrong-box');
+                
+                if (aiLetter) {
+                     parent.querySelectorAll('.quiz-option').forEach(opt => {
+                         const optText = cleanOptionText(opt.innerText).trim().toUpperCase();
+                         if (optText.startsWith(aiLetter)) opt.classList.add('correct');
+                      });
+                }
+
+                htmlContent += `<div class="explanation-header">❌ ${failMsg.toUpperCase()}</div>`;
+                htmlContent += `<div style="margin-bottom:8px;">The correct option was: <span class="sakura-bold">${cleanOptionText(question.answer)}</span></div>`;
+                htmlContent += `<div><strong>Explanation:</strong> ${reason}</div>`;
+            }
+            
+            explainBox.innerHTML = htmlContent;
+        }
+
+        // --- 6. SCOREBOARD ---
+        function showFinalScore() {
+            const display = document.getElementById('final-score-display');
+            const percentage = (userScore.correct / userScore.total) * 100;
+            let message = "";
+            let punHTML = "";
+
+            if (userScore.total === 0) {
+                display.innerText = "You haven't answered any questions yet!";
+                return;
+            }
+
+            if (percentage >= 70) {
+                message = `Outstanding! Score: ${userScore.correct}/${userScore.total}`;
+                punHTML = `<br><span class='pun-text'>${aiPunSuccess} 🌸</span>`;
+            } else {
+                message = `Score: ${userScore.correct}/${userScore.total}`;
+                punHTML = `<br><span class='pun-text'>${aiPunFail}</span>`;
+            }
+
+            display.innerHTML = message + punHTML;
+            display.scrollIntoView({ behavior: 'smooth' });
         }
     </script>
 </body>
