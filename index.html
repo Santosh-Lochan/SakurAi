@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SakurAi - Exam Super Generator</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="[https://fonts.googleapis.com](https://fonts.googleapis.com)">
+    <link rel="preconnect" href="[https://fonts.gstatic.com](https://fonts.gstatic.com)" crossorigin>
+    <link href="[https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap](https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap)" rel="stylesheet">
 
     <style>
         /* --- 1. LIGHT MODE --- */
@@ -359,6 +359,29 @@
         }
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- NEW: FLOATING SWITCH BUTTON --- */
+        .floating-switch {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background-color: var(--accent-color);
+            color: white;
+            border-radius: 50%;
+            border: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .floating-switch:hover { transform: scale(1.1); }
+        .floating-switch:active { transform: scale(0.9); }
     </style>
 </head>
 <body>
@@ -399,8 +422,10 @@
         </div>
     </div>
 
+    <button class="floating-switch" id="modeSwitchBtn" title="Switch Input Mode">📂</button>
+
     <script>
-        // --- 1. THEME SWITCHER ---
+        // --- 1. THEME SWITCHER (Original) ---
         const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
         function setTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
@@ -420,69 +445,145 @@
         if(toggleSwitch) toggleSwitch.addEventListener('change', switchTheme);
 
 
-        // --- 2. GLOBAL VARIABLES ---
+        // --- 2. GLOBAL STATE ---
+        let activeFile = JSON.parse(localStorage.getItem('sakurai_active_file')) || null;
+        let isUploadMode = false;
         let currentQuizData = [];
+        // NEW PUN VARIABLES
         let aiPunSuccess = "Great job!";
         let aiPunFail = "Keep trying!";
         let userScore = { correct: 0, wrong: 0, total: 0 };
         
-        const successPhrases = ["Good job!", "Spot on!", "Nailed it!", "Correct!", "You got it!"];
-        const failPhrases = ["Ah, shucks!", "Close one!", "Not quite!", "Oops!", "Almost!"];
+        // --- 3. DOM ELEMENTS ---
+        const textArea = document.getElementById('inputText');
+        const output = document.getElementById('output');
+        const scoreSection = document.getElementById('score-section');
+        const finalDisplay = document.getElementById('final-score-display');
+        const modeBtn = document.getElementById('modeSwitchBtn');
 
-        // --- 3. CLEANER ---
-        function cleanOptionText(text) {
-            if (!text) return "";
-            // Remove markdown like **bold**, *italic*, __bold__
-            return text.replace(/[\*_]/g, '');
+        // --- 4. SESSION INIT ---
+        function updateUIState() {
+            if (activeFile) {
+                // STATE: FILE LOADED
+                textArea.value = `✅ [ACTIVE FILE]: ${activeFile.name}\n(Ready! Type a question here or click a button)`;
+                textArea.style.borderColor = 'var(--correct-border)';
+                modeBtn.innerText = "🔄"; // Reset Icon
+                modeBtn.title = "Reset Session";
+                modeBtn.onclick = resetSession;
+            } else if (isUploadMode) {
+                // STATE: UPLOAD MODE
+                textArea.value = "";
+                textArea.placeholder = "📂 Drop PDF, Images, or Notes here...";
+                textArea.style.borderColor = 'var(--accent-color)';
+                modeBtn.innerText = "✏️"; // Text Icon
+                modeBtn.title = "Switch to Text Mode";
+                modeBtn.onclick = toggleMode;
+            } else {
+                // STATE: TEXT MODE (Default)
+                textArea.value = "";
+                textArea.placeholder = "Paste your study notes here...";
+                textArea.style.borderColor = 'transparent';
+                modeBtn.innerText = "📂"; // Folder Icon
+                modeBtn.title = "Switch to Upload Mode";
+                modeBtn.onclick = toggleMode;
+            }
+        }
+        
+        // Initial Run
+        updateUIState();
+
+
+        // --- 5. MODE SWITCHER ---
+        function toggleMode() {
+            isUploadMode = !isUploadMode;
+            updateUIState();
         }
 
-        // --- 4. GENERATE FUNCTION (NUCLEAR PROMPT) ---
-        async function generate(type) {
-            let text = document.getElementById('inputText').value;
-            const output = document.getElementById('output');
-            const scoreSection = document.getElementById('score-section');
-            const finalDisplay = document.getElementById('final-score-display');
-
-            if(!text) { alert("Please paste some text first!"); return; }
-            
-            output.innerHTML = '<span class="loading">✨ Gathering Cherry Blossoms... (Processing) ✨</span>';
-            scoreSection.style.display = 'none';
-            finalDisplay.innerHTML = "";
-            userScore = { correct: 0, wrong: 0, total: 0 };
-
-            if (type === 'quiz') {
-                // THE NUCLEAR PROMPT: Putting structure at the END + Demanding JSON
-                const instructions = `
-                
-                *** SYSTEM INSTRUCTION ***
-                You are a strict JSON Generator. 
-                Do NOT output markdown. Do NOT output preface text. Output ONLY valid JSON.
-                
-                Based on the user text above, generate a quiz.
-                
-                REQUIRED JSON STRUCTURE:
-                {
-                    "message_success": "A funny, encouraging pun/congratulation related to the topic for a high score.",
-                    "message_failure": "A funny, roast-style encouraging pun related to the topic for a low score.",
-                    "questions": [
-                        {
-                            "question": "Question text here",
-                            "options": ["Option A", "Option B", "Option C", "Option D"],
-                            "answer": "The text of the correct option",
-                            "why_is_it_correct": "A conceptual explanation of why this answer is right. MUST be 1-2 sentences. Do NOT say 'Because it is correct'."
-                        }
-                    ]
-                }
-                `;
-                // Append instructions to the END of the text
-                text = text + "\n\n" + instructions;
+        function resetSession() {
+            if(confirm("Clear current file and reset?")) {
+                localStorage.removeItem('sakurai_active_file');
+                activeFile = null;
+                isUploadMode = false;
+                updateUIState();
+                output.innerText = "Session Cleared.";
+                scoreSection.style.display = 'none';
             }
+        }
 
-            const endpoint = 'https://sakurai-cjfz.onrender.com/ai-action';
-            const payload = { text, action: type };
+        // --- 6. DRAG & DROP LOGIC ---
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            textArea.addEventListener(eventName, (e) => { 
+                e.preventDefault(); 
+                e.stopPropagation(); 
+            }, false);
+        });
+
+        textArea.addEventListener('drop', async (e) => {
+            if (!isUploadMode && !activeFile) {
+                // Auto-switch to upload mode if user drops a file unexpectedly
+                isUploadMode = true; 
+            }
+            
+            if (activeFile) return; // Don't upload if file already exists
+
+            const file = e.dataTransfer.files[0];
+            if (!file) return;
+
+            textArea.value = `⏳ Uploading ${file.name} to Cloud Brain...`;
+            textArea.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', file);
 
             try {
-                const res = await fetch(endpoint, {
+                // UPLOAD TO LOCALHOST SERVER
+                const res = await fetch('http://localhost:3000/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    activeFile = { name: file.name, uri: data.fileUri, mimeType: data.mimeType };
+                    localStorage.setItem('sakurai_active_file', JSON.stringify(activeFile));
+                    updateUIState();
+                } else {
+                    alert("Upload failed: " + data.error);
+                    updateUIState();
+                }
+            } catch (err) {
+                console.error(err);
+                textArea.value = "❌ Server Error. Is 'node server.js' running?";
+            } finally {
+                textArea.disabled = false;
+            }
+        });
+
+
+        // --- 7. GENERATE FUNCTION (HYBRID) ---
+        async function generate(type) {
+            let textVal = textArea.value;
+            // Clean placeholder text so we don't send it to AI
+            if (textVal.includes("[ACTIVE FILE]")) textVal = "";
+
+            if (!activeFile && !textVal) {
+                alert("Please paste text or upload a file first!");
+                return;
+            }
+
+            output.innerHTML = '<span class="loading">✨ Gathering Cherry Blossoms... (Processing) ✨</span>';
+            scoreSection.style.display = 'none';
+            userScore = { correct: 0, wrong: 0, total: 0 };
+
+            const payload = {
+                action: type,
+                text: textVal,
+                fileUri: activeFile ? activeFile.uri : null,
+                mimeType: activeFile ? activeFile.mimeType : null
+            };
+
+            try {
+                const res = await fetch('http://localhost:3000/ai-action', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -494,65 +595,69 @@
                     output.innerText = "Error: " + data.error;
                 } else {
                     if (type === 'quiz') {
-                        try {
-                            // Helper to parse if AI wraps in ```json ... ```
-                            let rawJson = data.result;
-                            if (rawJson.includes("```json")) {
-                                rawJson = rawJson.replace(/```json/g, "").replace(/```/g, "");
-                            }
-                            
-                            const parsedData = JSON.parse(rawJson);
-                            
-                            if (parsedData.questions) {
-                                currentQuizData = parsedData.questions;
-                                aiPunSuccess = parsedData.message_success || "Outstanding!";
-                                aiPunFail = parsedData.message_failure || "Keep studying!";
-                            } else {
-                                // Fallback for bad AI behavior
-                                currentQuizData = Array.isArray(parsedData) ? parsedData : [];
-                            }
-
-                            userScore.total = currentQuizData.length;
-                            renderInteractiveQuiz(currentQuizData);
-                            scoreSection.style.display = 'block'; 
-                        } catch (e) {
-                            console.error(e);
-                            output.innerText = "Error parsing quiz data. The AI returned invalid JSON. Please try again.";
-                        }
+                        handleQuizResponse(data.result);
+                    } else if (type === 'notes') {
+                        // Clean HTML notes
+                        let clean = data.result.replace(/```html/g, "").replace(/```/g, "");
+                        output.innerHTML = clean;
                     } else {
                         output.innerHTML = formatText(data.result);
                     }
                 }
             } catch (err) {
                 console.error(err);
-                output.innerText = "❌ Connection Failed. Is the server running?";
+                output.innerText = "❌ Connection Failed.";
             }
         }
 
+        // --- 8. HELPERS & QUIZ LOGIC (Original Logic Preserved) ---
         function formatText(text) {
             let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             formatted = formatted.replace(/\* /g, '• ');
             return formatted;
         }
 
-        // --- 5. QUIZ RENDER ---
-        function renderInteractiveQuiz(questions) {
-            const output = document.getElementById('output');
-            // FIX: Removed indentation from string template to prevent whitespace artifacts
-            let html = '';
+        function cleanOptionText(text) {
+            if (!text) return "";
+            return text.replace(/[\*_]/g, '');
+        }
 
+        function handleQuizResponse(rawJson) {
+            try {
+                let json = rawJson.replace(/```json/g, "").replace(/```/g, "");
+                const parsed = JSON.parse(json);
+                
+                // NEW: Extract Puns if they exist
+                if (parsed.message_success) aiPunSuccess = parsed.message_success;
+                if (parsed.message_failure) aiPunFail = parsed.message_failure;
+
+                // Handle different JSON structures AI might return
+                if (Array.isArray(parsed)) currentQuizData = parsed;
+                else if (parsed.questions) currentQuizData = parsed.questions;
+                else currentQuizData = [];
+
+                if (currentQuizData.length > 0) {
+                    userScore.total = currentQuizData.length;
+                    renderInteractiveQuiz(currentQuizData);
+                    scoreSection.style.display = 'block';
+                } else {
+                    output.innerText = "Error: Invalid Quiz Data";
+                }
+            } catch (e) {
+                output.innerText = "Quiz Parse Error. Try again.";
+            }
+        }
+
+        function renderInteractiveQuiz(questions) {
+            let html = '';
             questions.forEach((q, qIndex) => {
                 html += `<div class="quiz-card" id="q-card-${qIndex}">`;
                 html += `<strong>${qIndex + 1}. ${q.question}</strong>`;
                 html += `<div class="options-container">`;
-                
                 q.options.forEach((opt, optIndex) => {
                     html += `<div class="quiz-option" onclick="checkAnswer(${qIndex}, ${optIndex}, this)">${cleanOptionText(opt)}</div>`;
                 });
-                
-                html += `</div>`;
-                html += `<div class="explanation-box" id="explain-${qIndex}"></div>`;
-                html += `</div>`;
+                html += `</div><div class="explanation-box" id="explain-${qIndex}"></div></div>`;
             });
             output.innerHTML = html;
         }
@@ -565,68 +670,34 @@
             const question = currentQuizData[qIndex];
             const selectedText = cleanOptionText(question.options[optIndex]);
             const aiAnswerText = cleanOptionText(question.answer);
-
-            // MATCHING
-            const userLetterMatch = selectedText.match(/^([A-D])[\)\.]/i);
-            const userLetter = userLetterMatch ? userLetterMatch[1].toUpperCase() : null;
-
-            let aiLetter = null;
-            const aiAnswerMatch = aiAnswerText.match(/^([A-D])[\)\.]/i);
-            if (aiAnswerMatch) {
-                aiLetter = aiAnswerMatch[1].toUpperCase();
-            } else {
-                const clean = aiAnswerText.replace(/[\*\s]/g, '').toUpperCase();
-                if (clean.length === 1 && "ABCD".includes(clean)) aiLetter = clean;
-            }
-
-            const userRawText = selectedText.replace(/^[A-D][\)\.]\s*/i, '').trim().toLowerCase();
-            const aiRawText = aiAnswerText.replace(/^[A-D][\)\.]\s*/i, '').replace(/\*\*/g, '').trim().toLowerCase();
-
-            let isCorrect = false;
-            if (userLetter && aiLetter && userLetter === aiLetter) isCorrect = true;
-            else if (userRawText === aiRawText || aiRawText.includes(userRawText) || userRawText.includes(aiRawText)) isCorrect = true;
-
-            // UI UPDATES
-            const explainBox = document.getElementById(`explain-${qIndex}`);
-            explainBox.style.display = 'block';
-
-            const successMsg = successPhrases[Math.floor(Math.random() * successPhrases.length)];
-            const failMsg = failPhrases[Math.floor(Math.random() * failPhrases.length)];
             
-            // Use the new "why_is_it_correct" field
-            const reason = question.why_is_it_correct ? question.why_is_it_correct : (question.explanation || "Correct Answer.");
+            // Loose matching logic
+            let isCorrect = selectedText.includes(aiAnswerText) || aiAnswerText.includes(selectedText);
+            // Check for "A)" prefix matching
+            const selLetter = selectedText.match(/^([A-D])[\)\.]/);
+            const aiLetter = aiAnswerText.match(/^([A-D])[\)\.]/);
+            if(selLetter && aiLetter && selLetter[1] == aiLetter[1]) isCorrect = true;
+
+            const box = document.getElementById(`explain-${qIndex}`);
+            box.style.display = 'block';
             
-            let htmlContent = "";
+            const reason = question.why_is_it_correct || "Correct Answer.";
 
             if (isCorrect) {
                 userScore.correct++;
                 element.classList.add('correct');
-                explainBox.classList.add('correct-box');
-                
-                htmlContent += `<div class="explanation-header">✅ ${successMsg.toUpperCase()}</div>`;
-                htmlContent += `<div><strong>Explanation:</strong> ${reason}</div>`;
-
+                box.classList.add('correct-box');
+                box.innerHTML = `<div class="explanation-header">✅ CORRECT!</div><div>${reason}</div>`;
             } else {
                 userScore.wrong++;
                 element.classList.add('wrong');
-                explainBox.classList.add('wrong-box');
-                
-                if (aiLetter) {
-                     parent.querySelectorAll('.quiz-option').forEach(opt => {
-                         const optText = cleanOptionText(opt.innerText).trim().toUpperCase();
-                         if (optText.startsWith(aiLetter)) opt.classList.add('correct');
-                      });
-                }
-
-                htmlContent += `<div class="explanation-header">❌ ${failMsg.toUpperCase()}</div>`;
-                htmlContent += `<div style="margin-bottom:8px;">The correct option was: <span class="sakura-bold">${cleanOptionText(question.answer)}</span></div>`;
-                htmlContent += `<div><strong>Explanation:</strong> ${reason}</div>`;
+                box.classList.add('wrong-box');
+                box.innerHTML = `<div class="explanation-header">❌ INCORRECT</div>
+                                 <div style="margin-bottom:8px;">Answer: <span class="sakura-bold">${cleanOptionText(question.answer)}</span></div>
+                                 <div>${reason}</div>`;
             }
-            
-            explainBox.innerHTML = htmlContent;
         }
 
-        // --- 6. SCOREBOARD ---
         function showFinalScore() {
             const display = document.getElementById('final-score-display');
             const percentage = (userScore.correct / userScore.total) * 100;

@@ -1,99 +1,151 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const multer = require('multer');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleAIFileManager } = require("@google/generative-ai/server");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Temporary RAM storage for upload handling
+const upload = multer({ storage: multer.memoryStorage() });
+
+// Initialize Gemini 2.5
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const fileManager = new GoogleAIFileManager(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-app.post('/ai-action', async (req, res) => {
-    const { text, action } = req.body;
-    if (!text) return res.status(400).json({ error: "No text provided" });
-
-    console.log(`🧠 Gemini Processing Action: ${action}...`);
-
-    let instruction = "";
-
-    switch (action) {
-        case 'summarize':
-            instruction = "You are an expert summarizer. Create a clear, concise summary of the provided text. Capture the main ideas and key details without losing the core meaning. Do NOT provide any introductory text like 'Here is a summary'. Output ONLY the summary.";
-            break;
-
-        case 'quiz':
-            instruction = `You are a teacher. Create a multiple-choice quiz with at least 15 questions based on the text. 
-            Return the result strictly as a JSON Array of objects. 
-            Do NOT use Markdown formatting (no \`\`\`json blocks). Return raw JSON only.
-            
-            Structure each object exactly like this:
-            [
-              {
-                "question": "The question text here?",
-                "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
-                "answer": "The correct answer text"
-              },
-              ...
-            ]`;
-            break;
-
-        case 'qa-short':
-            instruction = "Create between 10 to 15 Short Answer Questions based on the text. If the text is very long, aim for 15. If the text is shorter, create as many valid questions as possible (minimum 10). Provide the Question, followed immediately by a 1-2 sentence Answer. Do NOT provide any conversational filler. Output ONLY the questions and answers.";
-            break;
-
-        case 'qa-long':
-            instruction = "Create 3 Deep-Dive Essay Questions. For each, provide a detailed paragraph-length model answer explaining the concept fully. Do NOT provide intro/outro text. Output ONLY the content.";
-            break;
-
-        case 'questions-only':
-            instruction = "Create 10 Practice Questions based on the text to test the student. Do NOT provide the answers. Just the questions. Do NOT include any conversational text.";
-            break;
-
-        case 'notes':
-            instruction = "Create 'Smart Revision Notes'. Use bullet points, bold key terms, list important dates/formulas, and structure it for quick memorization. Output ONLY the notes.";
-            break;
-
-        case 'explain':
-            instruction = "You are a tutor. Explain the core concepts of this text in simple terms (ELI5 style). Use analogies if possible to make it easy to understand. Keep it direct and avoid filler text.";
-            break;
-
-        default:
-            instruction = "Summarize this text. Output ONLY the summary.";
-    }
-
-    // Content generation
+// --- 1. UPLOAD ROUTE (The "Brain" Loader) ---
+app.post('/upload', upload.single('file'), async (req, res) => {
     try {
-        const formattingRules = `
+        if (!req.file) return res.status(400).json({ error: "No file provided" });
         
-        FORMATTING RULES:
-        - You MUST use HTML tags for formatting.
-        - Use <strong> for bold.
-        - Use <em> for italics.
-        - Use <br> for line breaks.
-        - Use <ul> and <li> for lists.
-        - Do NOT use Markdown syntax.
-        - IMPORTANT: Output compact HTML.`// Do NOT use double <br><br> tags between paragraphs. Do not add \n newlines.
-        ;
-        
-        const prompt = `${instruction}${formattingRules}\n\nHere is the text to analyze:\n"${text}"`;
+        console.log(`📤 Uploading ${req.file.originalname} to Gemini Cloud...`);
 
-        const result = await model.generateContent(prompt);
+        // Write buffer to temp file so Google can read it
+        const tempFilePath = path.join(os.tmpdir(), req.file.originalname);
+        fs.writeFileSync(tempFilePath, req.file.buffer);
+
+        // Upload to Google
+        const uploadResponse = await fileManager.uploadFile(tempFilePath, {
+            mimeType: req.file.mimetype,
+            displayName: req.file.originalname,
+        });
+
+        console.log(`✅ Upload Complete! URI: ${uploadResponse.file.uri}`);
+        
+        // Clean up temp file
+        fs.unlinkSync(tempFilePath);
+
+        res.json({ 
+            success: true, 
+            fileUri: uploadResponse.file.uri, 
+            mimeType: uploadResponse.file.mimeType 
+        });
+
+    } catch (error) {
+        console.error("❌ Upload Failed:", error);
+        res.status(500).json({ error: "Upload failed." });
+    }
+});
+
+// --- 2. ACTION ROUTE (The Logic Core) ---
+app.post('/ai-action', async (req, res) => {
+    try {
+        const { text, action, fileUri, mimeType } = req.body;
+        
+        console.log(`🧠 Processing: ${action} | Mode: ${fileUri ? 'FILE' : 'TEXT'}`);
+
+        let instruction = "";
+        // Flag to control if we add generic HTML rules (True by default)
+        let appendGeneralFormatting = true; 
+
+        switch (action) {
+            case 'summarize':
+                instruction = "You are an expert summarizer. Create a clear, concise summary. Do NOT provide intro text. Output ONLY the summary.";
+                break;
+
+            case 'quiz':
+                instruction = `You are a teacher. Create a multiple-choice quiz (15 questions). 
+                Return a strict JSON Object (no markdown).
+                Structure:
+                {
+                    "message_success": "A funny, encouraging pun related to the topic for a high score.",
+                    "message_failure": "A funny, roast-style encouraging pun related to the topic for a low score.",
+                    "questions": [
+                        {"question": "...", "options": ["A)...", "B)..."], "answer": "...", "why_is_it_correct": "..."}
+                    ]
+                }`;
+                appendGeneralFormatting = false; 
+                break;
+
+            case 'notes':
+                // THE NUCLEAR PROMPT (Your requested fix)
+                instruction = `You are an expert student tutor. Create 'Smart Revision Notes' using strict HTML5 formatting.
+                - Use <h3> for main headings.
+                - Use <ul> and <li> for bullet points (Do not use dashes or plain text indentation).
+                - Use <strong> for key terms.
+                - Do NOT use Markdown.
+                - Do NOT include <html>, <head>, or <body> tags. Just return the content <div>.`;
+                appendGeneralFormatting = false; // We use specific rules above
+                break;
+
+            case 'qa-short':
+                instruction = "Create 10-15 Short Answer Questions. Question followed strictly by 1-2 sentence Answer. No conversational filler.";
+                break;
+
+            case 'qa-long':
+                instruction = "Create 3 Deep-Dive Essay Questions with detailed model answers. No intro/outro.";
+                break;
+
+            case 'questions-only':
+                instruction = "Create 10 Practice Questions. No answers. No filler.";
+                break;
+
+            default:
+                instruction = "Assist with this content.";
+        }
+
+        // --- BUILD PROMPT ---
+        let promptParts = [];
+        
+        // A. Add File (If exists - Stateful Mode)
+        if (fileUri) {
+            promptParts.push({
+                fileData: { mimeType: mimeType, fileUri: fileUri }
+            });
+        }
+
+        // B. Add Formatting Rules (Conditional)
+        const formattingRules = `\n\nFORMATTING: Use HTML tags (<strong>, <em>, <ul>, <li>). Do not use Markdown syntax.`;
+        if (appendGeneralFormatting) instruction += formattingRules;
+        
+        promptParts.push({ text: instruction });
+
+        // C. Add User Text (Stateless Mode OR Context Chat)
+        if (text) promptParts.push({ text: `\nUSER INPUT: "${text}"` });
+
+        const result = await model.generateContent(promptParts);
         const response = await result.response;
         let output = response.text();
         
-        output = output.replace(/```json/g, '').replace(/```/g, ''); //accidental markdown removal
+        // Cleanup
+        output = output.replace(/```json/g, '').replace(/```html/g, '').replace(/```/g, '');
 
-        console.log("✅ Gemini Success!");
         res.json({ result: output });
 
     } catch (error) {
-        console.error("❌ Gemini Error:", error.message);
-        res.status(500).json({ error: "AI Generation failed. Check server logs." });
+        console.error("❌ Generation Failed:", error.message);
+        res.status(500).json({ error: "AI Error: " + error.message });
     }
 });
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log("🚀 Server running on http://localhost:3000");
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
