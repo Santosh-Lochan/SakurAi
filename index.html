@@ -537,7 +537,7 @@
 
             try {
                 // UPLOAD TO LOCALHOST SERVER
-                const res = await fetch('https://sakurai-cjfz.onrender.com', {
+                const res = await fetch('https://sakurai-cjfz.onrender.com/upload', {
                     method: 'POST',
                     body: formData
                 });
@@ -583,7 +583,7 @@
             };
 
             try {
-                const res = await fetch('https://sakurai-cjfz.onrender.com', {
+                const res = await fetch('https://sakurai-cjfz.onrender.com/ai-action', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
