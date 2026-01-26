@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SakurAi - Exam Super Generator</title>
+    <title>SakurAi - Help with notes</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
 
     <style>
-        /* --- 1. LIGHT MODE --- */
+        /* --- 1. LIGHT MODE VARIABLES --- */
         :root {
             --bg-color: #fff0f5;       
+            /* REMOVED --bg-image from here. We handle it in body::before/after now */
+            
             --card-bg: rgba(255, 255, 255, 0.95); 
             --input-bg: transparent;
             --quiz-card-bg: #ffffff;   
@@ -25,30 +27,40 @@
             --radius: 20px;
             
             /* QUIZ COLORS */
+            /*--opt-bg: #fff0f5;
+            --opt-hover: #ffe6f2;
+            --correct-bg: #d1fae5; 
+            --correct-border: #34d399;
+            --correct-text: #065f46;
+            --wrong-bg: #450a0a;   
+            --wrong-border: #7f1d1d;
+            --wrong-text: #fef2f2;*/ 
+            /* UPDATED LIGHT MODE QUIZ COLORS */
             --opt-bg: #fff0f5;
             --opt-hover: #ffe6f2;
             --correct-bg: #d1fae5; 
             --correct-border: #34d399;
             --correct-text: #065f46;
-            --wrong-bg: #450a0a;   /* Deep Red Background */
-            --wrong-border: #7f1d1d;
-            --wrong-text: #fef2f2; /* White Text */
+            --wrong-bg: #fee2e2;    /* Light red/pink hue */
+            --wrong-border: #fca5a5; /* Soft red border */
+            --wrong-text: #991b1b;   /* Dark red text for contrast */
         }
 
-        /* --- 2. DARK MODE --- */
+        /* --- 2. DARK MODE VARIABLES --- */
         [data-theme="dark"] {
             --bg-color: #0f172a;       
-            --card-bg: rgba(30, 41, 59, 0.9); 
-            --input-bg: rgba(0, 0, 0, 0.2);
+            
+            --card-bg: rgba(30, 41, 59, 0.96); 
+            --input-bg: rgba(0, 0, 0, 0.3);
             --quiz-card-bg: #1e293b;   
             --text-color: #e2e8f0;     
-            --sub-text: #94a3b8;       
+            --sub-text: #cbd5e1;       
             --accent-color: #f472b6;   
             --accent-hover: #db2777;   
             --border-color: #334155;   
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
             
-            /* QUIZ DARK COLORS */
+            /* QUIZ DARK COLORS *//*
             --opt-bg: #334155;
             --opt-hover: #475569;
             --correct-bg: #064e3b;
@@ -56,13 +68,62 @@
             --correct-text: #ecfdf5;
             --wrong-bg: #450a0a;
             --wrong-border: #7f1d1d;
-            --wrong-text: #fef2f2;
+            --wrong-text: #fef2f2;*/
+            /* UPDATED DARK MODE QUIZ COLORS */
+            --opt-bg: #334155;
+            --opt-hover: #475569;
+            --correct-bg: #064e3b;
+            --correct-border: #10b981;
+            --correct-text: #ecfdf5;
+            --wrong-bg: #450a0a;    /* Keep dark red for the "glow" */
+            --wrong-border: #ef4444; /* Brighter red border for dark mode */
+            --wrong-text: #fef2f2;   /* Light text for readability */
         }
+
+        /* --- 3. BACKGROUND LAYERS (THE SMOOTH FIX) --- */
+        /* Layer 1: Light Mode Image (Always there, fades out in dark mode) */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('images/bg1.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: -2; /* Deepest layer */
+            transition: opacity 0.8s ease-in-out; /* Smooth Cinematic Fade */
+            opacity: 1; 
+        }
+
+        /* Layer 2: Dark Mode Image (Always there, starts hidden, fades in) */
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('images/bg2.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: -1; /* Sits just on top of the Light layer */
+            transition: opacity 0.8s ease-in-out;
+            opacity: 0; 
+        }
+
+        /* THE TRIGGER: When Dark Mode is Active */
+        [data-theme="dark"] body::before {
+            opacity: 0; /* Fade out Light image */
+        }
+        [data-theme="dark"] body::after {
+            opacity: 1; /* Fade in Dark image */
+        }
+
 
         /* --- GLOBAL LAYOUT --- */
         body {
             font-family: var(--font-main);
-            background-color: var(--bg-color);
+            background-color: var(--bg-color); /* Fallback only */
+            /* Note: We removed background-image from here to let the layers handle it */
+            
             color: var(--text-color);
             margin: 0;
             padding: 40px 20px;
@@ -70,7 +131,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            transition: background-color 0.4s ease, color 0.4s ease;
+            transition: color 0.4s ease;
         }
 
         /* --- TOGGLE SWITCH --- */
@@ -80,6 +141,7 @@
             right: 20px;
             display: flex;
             align-items: center;
+            z-index: 10;
         }
         .theme-switch {
             display: inline-block;
@@ -131,6 +193,7 @@
             text-transform: uppercase;
             letter-spacing: 2px;
             text-align: center;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.1);
             transition: color 0.4s ease;
         }
         p#subtitle {
@@ -139,6 +202,7 @@
             margin-top: 5px;
             margin-bottom: 40px;
             font-size: 1.1rem;
+            font-weight: 600;
             transition: color 0.4s ease;
         }
 
@@ -152,7 +216,8 @@
             width: 100%;
             max-width: 800px;
             box-sizing: border-box;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px);
             transition: all 0.4s ease;
         }
         textarea {
@@ -170,7 +235,7 @@
             outline: none;
             transition: all 0.4s ease;
         }
-        textarea::placeholder { color: var(--sub-text); opacity: 0.6; }
+        textarea::placeholder { color: var(--sub-text); opacity: 0.8; }
         textarea:focus { border-color: var(--accent-color); }
 
         /* --- CONTROL GRID --- */
@@ -196,6 +261,7 @@
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             text-transform: uppercase;
             letter-spacing: 1px;
+            backdrop-filter: blur(5px);
         }
         button:hover {
             transform: translateY(-2px);
@@ -217,6 +283,7 @@
             font-size: 1.2rem;
             margin-bottom: 15px;
             font-weight: 700;
+            text-shadow: 0 1px 5px rgba(0,0,0,0.1);
             transition: color 0.4s ease;
         }
         #output {
@@ -226,15 +293,14 @@
             border: 1px solid var(--border-color);
             box-shadow: var(--shadow);
             line-height: 1.8;
-            white-space: pre-wrap; /* Needed for text summaries */
-            backdrop-filter: blur(10px);
+            white-space: normal;
+            backdrop-filter: blur(12px);
             min-height: 100px;
             color: var(--text-color);
             transition: all 0.4s ease;
         }
         
         #output strong { color: var(--accent-color); }
-        /* Force quiz options to be plain */
         .quiz-option strong, .quiz-option em, .quiz-option b, .quiz-option i {
             color: inherit !important; 
             font-weight: 500 !important;
@@ -249,7 +315,7 @@
             margin-bottom: 25px;
             border-radius: 16px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            white-space: normal; /* FIX: Reset whitespace so indentation doesn't show */
+            white-space: normal;
         }
         .quiz-card strong {
             color: var(--accent-color);
@@ -280,7 +346,7 @@
             background-color: var(--wrong-bg);
             border-color: var(--wrong-border);
             color: var(--wrong-text);
-            opacity: 1; /* Keep fully opaque for readability */
+            opacity: 1;
         }
 
         /* EXPLANATION BOX */
@@ -312,7 +378,6 @@
             letter-spacing: 1px;
         }
         
-        /* The Sakura Bold Span for Correct Answers */
         .sakura-bold {
             color: var(--accent-color) !important;
             font-weight: 700;
@@ -332,15 +397,28 @@
             width: auto;
             display: inline-block;
             padding: 15px 40px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
         }
-        .score-btn:hover { background-color: var(--accent-color); }
+        .score-btn:hover { background-color: var(--accent-color); color: white; }
         
         #final-score-display {
             margin-top: 20px;
             font-size: 1.2rem;
             font-weight: bold;
             animation: fadeIn 0.5s ease;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            display: inline-block;
+            backdrop-filter: blur(5px);
         }
+        /* --- THE FIX IS HERE --- */
+        /* This hides the element completely when it has no content */
+        #final-score-display:empty {
+            display: none;
+        }
+        /* ----------------------- */
         .pun-text {
             font-style: normal;
             color: var(--accent-color);
@@ -360,7 +438,7 @@
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- NEW: FLOATING SWITCH BUTTON --- */
+        /* --- FLOATING SWITCH BUTTON --- */
         .floating-switch {
             position: fixed;
             bottom: 30px;
@@ -397,7 +475,7 @@
     </div>
 
     <h1>🌸SakurAi</h1>
-    <p id="subtitle">The Spring of Knowledge</p>
+    <p id="subtitle">Learning, simplified.</p>
     
     <div class="input-card">
         <textarea id="inputText" placeholder="Paste your study notes here..."></textarea>
@@ -425,7 +503,7 @@
     <button class="floating-switch" id="modeSwitchBtn" title="Switch Input Mode">📂</button>
 
     <script>
-        // --- 1. THEME SWITCHER (Original) ---
+        // --- 1. THEME SWITCHER ---
         const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
         function setTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
@@ -449,7 +527,6 @@
         let activeFile = JSON.parse(localStorage.getItem('sakurai_active_file')) || null;
         let isUploadMode = false;
         let currentQuizData = [];
-        // NEW PUN VARIABLES
         let aiPunSuccess = "Great job!";
         let aiPunFail = "Keep trying!";
         let userScore = { correct: 0, wrong: 0, total: 0 };
@@ -467,7 +544,7 @@
                 // STATE: FILE LOADED
                 textArea.value = `✅ [ACTIVE FILE]: ${activeFile.name}\n(Ready! Type a question here or click a button)`;
                 textArea.style.borderColor = 'var(--correct-border)';
-                modeBtn.innerText = "🔄"; // Reset Icon
+                modeBtn.innerText = "🔄"; 
                 modeBtn.title = "Reset Session";
                 modeBtn.onclick = resetSession;
             } else if (isUploadMode) {
@@ -475,7 +552,7 @@
                 textArea.value = "";
                 textArea.placeholder = "📂 Drop PDF, Images, or Notes here...";
                 textArea.style.borderColor = 'var(--accent-color)';
-                modeBtn.innerText = "✏️"; // Text Icon
+                modeBtn.innerText = "✏️"; 
                 modeBtn.title = "Switch to Text Mode";
                 modeBtn.onclick = toggleMode;
             } else {
@@ -483,15 +560,13 @@
                 textArea.value = "";
                 textArea.placeholder = "Paste your study notes here...";
                 textArea.style.borderColor = 'transparent';
-                modeBtn.innerText = "📂"; // Folder Icon
+                modeBtn.innerText = "📂"; 
                 modeBtn.title = "Switch to Upload Mode";
                 modeBtn.onclick = toggleMode;
             }
         }
         
-        // Initial Run
         updateUIState();
-
 
         // --- 5. MODE SWITCHER ---
         function toggleMode() {
@@ -520,11 +595,10 @@
 
         textArea.addEventListener('drop', async (e) => {
             if (!isUploadMode && !activeFile) {
-                // Auto-switch to upload mode if user drops a file unexpectedly
                 isUploadMode = true; 
             }
             
-            if (activeFile) return; // Don't upload if file already exists
+            if (activeFile) return; 
 
             const file = e.dataTransfer.files[0];
             if (!file) return;
@@ -536,7 +610,7 @@
             formData.append('file', file);
 
             try {
-                // UPLOAD TO LOCALHOST SERVER
+                // UPLOAD TO SERVER
                 const res = await fetch('https://sakurai-cjfz.onrender.com/upload', {
                     method: 'POST',
                     body: formData
@@ -560,10 +634,9 @@
         });
 
 
-        // --- 7. GENERATE FUNCTION (HYBRID) ---
+        // --- 7. GENERATE FUNCTION ---
         async function generate(type) {
             let textVal = textArea.value;
-            // Clean placeholder text so we don't send it to AI
             if (textVal.includes("[ACTIVE FILE]")) textVal = "";
 
             if (!activeFile && !textVal) {
@@ -583,6 +656,7 @@
             };
 
             try {
+                // FIXED TYPO: Added missing slash
                 const res = await fetch('https://sakurai-cjfz.onrender.com/ai-action', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -590,27 +664,44 @@
                 });
                 
                 const data = await res.json();
-                
+                /*
                 if (data.error) {
                     output.innerText = "Error: " + data.error;
                 } else {
                     if (type === 'quiz') {
                         handleQuizResponse(data.result);
                     } else if (type === 'notes') {
-                        // Clean HTML notes
                         let clean = data.result.replace(/```html/g, "").replace(/```/g, "");
                         output.innerHTML = clean;
                     } else {
                         output.innerHTML = formatText(data.result);
                     }
+                }*/
+               if (data.error) {
+                    output.innerText = "Error: " + data.error;
+                } else {
+                    // Always trim the response to remove that leading \n you saw in the Network tab
+                    let rawResult = data.result.trim();
+
+                    if (type === 'quiz') {
+                        // Only send to the quiz handler if we expect JSON
+                        handleQuizResponse(rawResult);
+                    } else {
+                        // For everything else (Summarize, Notes, Q&A), 
+                        // use innerHTML to render the <ul> and <h3> tags correctly
+                        output.innerHTML = rawResult;
+                        
+                        // Hide the score section if it's not a quiz
+                        scoreSection.style.display = 'none';
+                    }
                 }
             } catch (err) {
                 console.error(err);
-                output.innerText = "❌ Connection Failed.";
+                output.innerText = "❌ Connection Failed. Is the backend running?";
             }
         }
 
-        // --- 8. HELPERS & QUIZ LOGIC (Original Logic Preserved) ---
+        // --- 8. HELPERS & QUIZ LOGIC ---
         function formatText(text) {
             let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             formatted = formatted.replace(/\* /g, '• ');
@@ -627,11 +718,9 @@
                 let json = rawJson.replace(/```json/g, "").replace(/```/g, "");
                 const parsed = JSON.parse(json);
                 
-                // NEW: Extract Puns if they exist
                 if (parsed.message_success) aiPunSuccess = parsed.message_success;
                 if (parsed.message_failure) aiPunFail = parsed.message_failure;
 
-                // Handle different JSON structures AI might return
                 if (Array.isArray(parsed)) currentQuizData = parsed;
                 else if (parsed.questions) currentQuizData = parsed.questions;
                 else currentQuizData = [];
@@ -671,9 +760,7 @@
             const selectedText = cleanOptionText(question.options[optIndex]);
             const aiAnswerText = cleanOptionText(question.answer);
             
-            // Loose matching logic
             let isCorrect = selectedText.includes(aiAnswerText) || aiAnswerText.includes(selectedText);
-            // Check for "A)" prefix matching
             const selLetter = selectedText.match(/^([A-D])[\)\.]/);
             const aiLetter = aiAnswerText.match(/^([A-D])[\)\.]/);
             if(selLetter && aiLetter && selLetter[1] == aiLetter[1]) isCorrect = true;
