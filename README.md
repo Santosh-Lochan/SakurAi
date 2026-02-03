@@ -148,5 +148,3 @@ npm start
 Built with the vision of making revision faster, smarter, and more interactive.
 
 ---
-
-If you want next, I can help you add screenshots, API documentation, or a license section.
